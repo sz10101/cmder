@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - development
     paths-ignore:
       - '**/*.md'
       - '**/*.txt'
@@ -12,6 +13,7 @@ on:
   pull_request:
     branches:
       - master
+      - development
     paths-ignore:
       - '**/*.md'
       - '**/*.txt'
@@ -36,17 +38,78 @@ jobs:
     continue-on-error: false
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
+
+    - name: Summary - Test execution started
+      shell: pwsh
+      run: |
+        echo "## 🧪 Run Tests - Workflow Summary" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "### Test Environment" >> $env:GITHUB_STEP_SUMMARY
+        echo "| Property | Value |" >> $env:GITHUB_STEP_SUMMARY
+        echo "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+        echo "| Repository | \`${{ github.repository }}\` |" >> $env:GITHUB_STEP_SUMMARY
+        echo "| Branch | \`${{ github.ref_name }}\` |" >> $env:GITHUB_STEP_SUMMARY
+        echo "| Commit | \`${{ github.sha }}\` |" >> $env:GITHUB_STEP_SUMMARY
+        echo "| Runner OS | \`${{ runner.os }}\` |" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+
     - name: Initialize vendors
       shell: pwsh
       working-directory: scripts
       run: .\build.ps1 -verbose
+
+    - name: Summary - Vendor initialization
+      if: success()
+      shell: pwsh
+      run: |
+        echo "### ⚙️ Vendor Initialization" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "✅ Vendor dependencies initialized successfully." >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+
+    - name: Summary - Test results table header
+      if: success()
+      shell: pwsh
+      run: |
+        echo "### 📋 Test Results" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "| Test | Status |" >> $env:GITHUB_STEP_SUMMARY
+        echo "| --- | --- |" >> $env:GITHUB_STEP_SUMMARY
+
     - name: Testing Clink Shell
       run: |
           cmd /c vendor\init.bat /v /d /t
+
+    - name: Summary - Clink Shell test
+      if: success()
+      shell: pwsh
+      run: |
+        echo "| Clink Shell | ✅ Passed |" >> $env:GITHUB_STEP_SUMMARY
     - name: Testing PowerShell
       run: |
-          PowerShell.exe -ExecutionPolicy Bypass -NoLogo -NoProfile -Command "Invoke-Expression '. ''vendor\profile.ps1'''"
+          PowerShell.exe -ExecutionPolicy Bypass -NoLogo -NoProfile -Command "$env:CMDER_DEBUG='1'; . 'vendor\profile.ps1'"
+
+    - name: Summary - PowerShell test
+      if: success()
+      shell: pwsh
+      run: |
+        echo "| PowerShell | ✅ Passed |" >> $env:GITHUB_STEP_SUMMARY
     - name: Testing Bash
       run: |
           bash vendor/cmder.sh
+
+    - name: Summary - Bash test
+      if: success()
+      shell: pwsh
+      run: |
+        echo "| Bash | ✅ Passed |" >> $env:GITHUB_STEP_SUMMARY
+
+    - name: Summary - All tests completed
+      if: success()
+      shell: pwsh
+      run: |
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "### ✅ All Tests Completed" >> $env:GITHUB_STEP_SUMMARY
+        echo "" >> $env:GITHUB_STEP_SUMMARY
+        echo "All shell environments tested successfully!" >> $env:GITHUB_STEP_SUMMARY
